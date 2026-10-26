@@ -5,6 +5,7 @@ import fastf1
 import pandas as pd
 from dotenv import load_dotenv
 from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 load_dotenv()
@@ -32,7 +33,21 @@ LAP_KEYS = [
     "DeletedReason",
 ]
 
+origins = [
+    "http://sxtr03.harishraj.in",
+    "http://localhost:3000",
+]
+
 app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/")
