@@ -6,7 +6,8 @@ import pandas as pd
 from dotenv import load_dotenv
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+from pydantic_core import PydanticCustomError
 
 load_dotenv()
 
@@ -108,3 +109,25 @@ def drivers(parameters: Annotated[DriversParams, Query()]):
         )
 
     return {"data": results}
+
+
+class TelemetryParams(DriversParams):
+    driver1: str = Field()
+    driver1Lap: str = Field()
+    driver2: str | None = None
+    driver2Lap: str | None = None
+
+    @model_validator(mode="after")
+    def validate_v3_v4(self):
+        if self.driver2 is not None and self.driver2Lap is None:
+            raise PydanticCustomError(
+                "missing",
+                "Field required",
+            )
+        return self
+
+
+@app.get("/api/telemetry")
+def telemetry(parameters: Annotated[TelemetryParams, Query()]):
+    print(parameters)
+    return {"message": "Hello from Telemetry!"}
