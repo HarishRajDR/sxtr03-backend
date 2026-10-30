@@ -34,6 +34,17 @@ LAP_KEYS = [
     "DeletedReason",
 ]
 
+TELEMETRY_KEYS = [
+    "RPM",
+    "Speed",
+    "nGear",
+    "Throttle",
+    "Brake",
+    "DRS",
+    "Distance",
+    "Time",
+]
+
 origins = [
     "http://sxtr03.harishraj.in",
     "http://localhost:3000",
@@ -113,9 +124,9 @@ def drivers(parameters: Annotated[DriversParams, Query()]):
 
 class TelemetryParams(DriversParams):
     driver1: str = Field()
-    driver1Lap: str = Field()
+    driver1Lap: int = Field()
     driver2: str | None = None
-    driver2Lap: str | None = None
+    driver2Lap: int | None = None
 
     @model_validator(mode="after")
     def validate_v3_v4(self):
@@ -129,5 +140,60 @@ class TelemetryParams(DriversParams):
 
 @app.get("/api/telemetry")
 def telemetry(parameters: Annotated[TelemetryParams, Query()]):
-    print(parameters)
-    return {"message": "Hello from Telemetry!"}
+    year = parameters.year
+    round = parameters.round
+    session = parameters.session
+
+    driver1_telemetry_result = []
+    driver2_telemetry_result = []
+
+    driver1 = parameters.driver1
+    driver1_lap = parameters.driver1Lap
+
+    driver2 = parameters.driver2
+    driver2_lap = parameters.driver2Lap
+
+    loaded_session = fastf1.get_session(year, round, session)
+    loaded_session.load()
+
+    circuit_info = loaded_session.get_circuit_info()
+    circuit_data = []
+
+    if circuit_info is not None:
+        circuit_data = (
+            circuit_info.corners.astype(object)
+            .where(pd.notna(circuit_info.corners), None)
+            .to_dict("records")
+        )
+
+    driver1_lap_data = loaded_session.laps.pick_drivers(driver1).pick_laps(driver1_lap)
+    driver1_car_data = driver1_lap_data.get_car_data().add_distance()
+
+    driver1_telemetry_result = (
+        driver1_car_data.astype(object)
+        .where(pd.notna(driver1_car_data), None)[TELEMETRY_KEYS]
+        .to_dict("records")
+    )
+
+    if driver2 is not None and driver2_lap is not None:
+        driver2_lap_data = loaded_session.laps.pick_drivers(driver2).pick_laps(
+            driver2_lap
+        )
+        driver2_car_data = driver2_lap_data.get_car_data().add_distance()
+
+        driver2_telemetry_result = (
+            driver2_car_data.astype(object)
+            .where(pd.notna(driver2_car_data), None)[TELEMETRY_KEYS]
+            .to_dict("records")
+        )
+
+        return {
+            "driver1TelemetryData": driver1_telemetry_result,
+            "driver2TelemetryData": driver2_telemetry_result,
+            "cornerData": circuit_data,
+        }
+
+    return {
+        "driver1TelemetryData": driver1_telemetry_result,
+        "cornerData": circuit_data,
+    }
