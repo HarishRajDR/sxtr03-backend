@@ -13,6 +13,7 @@ load_dotenv()
 
 DRIVERS_KEYS = [
     "DriverNumber",
+    "DriverId",
     "FullName",
     "TeamName",
     "TeamColor",
@@ -145,7 +146,6 @@ def telemetry(parameters: Annotated[TelemetryParams, Query()]):
     session = parameters.session
 
     driver1_telemetry_result = []
-    driver2_telemetry_result = []
 
     driver1 = parameters.driver1
     driver1_lap = parameters.driver1Lap
@@ -159,6 +159,8 @@ def telemetry(parameters: Annotated[TelemetryParams, Query()]):
     circuit_info = loaded_session.get_circuit_info()
     circuit_data = []
 
+    event_data = fastf1.get_event(year, round)
+
     if circuit_info is not None:
         circuit_data = (
             circuit_info.corners.astype(object)
@@ -168,6 +170,10 @@ def telemetry(parameters: Annotated[TelemetryParams, Query()]):
 
     driver1_lap_data = loaded_session.laps.pick_drivers(driver1).pick_laps(driver1_lap)
     driver1_car_data = driver1_lap_data.get_car_data().add_distance()
+    # Converting Boolean to int True -> 1 and False -> 0 for easy plotting
+    driver1_car_data["Brake"] = driver1_car_data["Brake"].astype(int)
+
+    driver1_telemetry = driver1_car_data[TELEMETRY_KEYS]
 
     driver1_telemetry_result = (
         driver1_car_data.astype(object)
@@ -180,20 +186,33 @@ def telemetry(parameters: Annotated[TelemetryParams, Query()]):
             driver2_lap
         )
         driver2_car_data = driver2_lap_data.get_car_data().add_distance()
+        # Converting Boolean to int True -> 1 and False -> 0 for easy plotting
+        driver2_car_data["Brake"] = driver2_car_data["Brake"].astype(int)
 
-        driver2_telemetry_result = (
-            driver2_car_data.astype(object)
-            .where(pd.notna(driver2_car_data), None)[TELEMETRY_KEYS]
+        driver2_telemetry = driver2_car_data[TELEMETRY_KEYS]
+
+        combined_telemetry = pd.concat(
+            [
+                driver1_telemetry.add_prefix("d1"),
+                driver2_telemetry.add_prefix("d2"),
+            ],
+            axis=1,
+        )
+
+        telemetry_result = (
+            combined_telemetry.astype(object)
+            .where(pd.notna(combined_telemetry), None)
             .to_dict("records")
         )
 
         return {
-            "driver1TelemetryData": driver1_telemetry_result,
-            "driver2TelemetryData": driver2_telemetry_result,
-            "cornerData": circuit_data,
+            "EventDetails": event_data.to_dict(),
+            "TelemetryData": telemetry_result,
+            "CornerData": circuit_data,
         }
 
     return {
-        "driver1TelemetryData": driver1_telemetry_result,
-        "cornerData": circuit_data,
+        "EventDetails": event_data.to_dict(),
+        "Driver1TelemetryData": driver1_telemetry_result,
+        "CornerData": circuit_data,
     }
