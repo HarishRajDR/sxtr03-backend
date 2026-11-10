@@ -223,9 +223,9 @@ def telemetry(parameters: Annotated[TelemetryParams, Query()]):
         return {
             "EventDetails": event_data.to_dict(),
             "Driver1Details": driver1_details[DRIVER_DETAILS_KEY].to_dict(),
-            "Driver1LapDetails": driver1_lap_data.to_dict("records"),
+            "Driver1LapDetails": driver1_lap_data.to_dict("records")[0],
             "Driver2Details": driver2_details[DRIVER_DETAILS_KEY].to_dict(),
-            "Driver2LapDetails": driver2_lap_data.to_dict("records"),
+            "Driver2LapDetails": driver2_lap_data.to_dict("records")[0],
             "TelemetryData": telemetry_result,
             "CornerData": circuit_data,
         }
@@ -233,7 +233,7 @@ def telemetry(parameters: Annotated[TelemetryParams, Query()]):
     return {
         "EventDetails": event_data.to_dict(),
         "Driver1Details": driver1_details[DRIVER_DETAILS_KEY].to_dict(),
-        "Driver1LapDetails": driver1_lap_data.to_dict("records"),
+        "Driver1LapDetails": driver1_lap_data.to_dict("records")[0],
         "TelemetryData": driver1_telemetry_result,
         "CornerData": circuit_data,
     }
