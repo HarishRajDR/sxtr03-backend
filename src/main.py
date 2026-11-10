@@ -20,6 +20,18 @@ DRIVERS_KEYS = [
     "ClassifiedPosition",
 ]
 
+DRIVER_DETAILS_KEY = [
+    "DriverNumber",
+    "DriverId",
+    "FullName",
+    "TeamName",
+    "TeamColor",
+    "Position",
+    "ClassifiedPosition",
+    "GridPosition",
+    "Status",
+]
+
 LAP_KEYS = [
     "DriverNumber",
     "Position",
@@ -168,6 +180,7 @@ def telemetry(parameters: Annotated[TelemetryParams, Query()]):
             .to_dict("records")
         )
 
+    driver1_details = loaded_session.get_driver(driver1)
     driver1_lap_data = loaded_session.laps.pick_drivers(driver1).pick_laps(driver1_lap)
     driver1_car_data = driver1_lap_data.get_car_data().add_distance()
     # Converting Boolean to int True -> 1 and False -> 0 for easy plotting
@@ -178,10 +191,12 @@ def telemetry(parameters: Annotated[TelemetryParams, Query()]):
     driver1_telemetry_result = (
         driver1_car_data.astype(object)
         .where(pd.notna(driver1_car_data), None)[TELEMETRY_KEYS]
+        .add_prefix("d1")
         .to_dict("records")
     )
 
     if driver2 is not None and driver2_lap is not None:
+        driver2_details = loaded_session.get_driver(driver2)
         driver2_lap_data = loaded_session.laps.pick_drivers(driver2).pick_laps(
             driver2_lap
         )
@@ -207,12 +222,18 @@ def telemetry(parameters: Annotated[TelemetryParams, Query()]):
 
         return {
             "EventDetails": event_data.to_dict(),
+            "Driver1Details": driver1_details[DRIVER_DETAILS_KEY].to_dict(),
+            "Driver1LapDetails": driver1_lap_data.to_dict("records"),
+            "Driver2Details": driver2_details[DRIVER_DETAILS_KEY].to_dict(),
+            "Driver2LapDetails": driver2_lap_data.to_dict("records"),
             "TelemetryData": telemetry_result,
             "CornerData": circuit_data,
         }
 
     return {
         "EventDetails": event_data.to_dict(),
-        "Driver1TelemetryData": driver1_telemetry_result,
+        "Driver1Details": driver1_details[DRIVER_DETAILS_KEY].to_dict(),
+        "Driver1LapDetails": driver1_lap_data.to_dict("records"),
+        "TelemetryData": driver1_telemetry_result,
         "CornerData": circuit_data,
     }
